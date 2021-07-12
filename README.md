@@ -1,6 +1,6 @@
 ## About this specific version
 
-Modified in order to be compatible with Python3 among other improvements, possibly making it easier for future usage and maintenance.
+Modified in order to be compatible with Python3 among other minor changes, possibly making it easier for future usage and maintenance.
 
 Made possible with advice and contributions from [Prof. Dr. Rubens Machado](https://sites.google.com/professores.utfpr.edu.br/rubensmachado/home).
 
