@@ -45,7 +45,6 @@ of the box in RAMSES with the DICE patch.
  
 * NumPy (python-numpy)
 * SciPy (python-scipy)
-* [pyGadgetReader](https://bitbucket.org/rthompson/pygadgetreader)
 * h5py (only if you need the HDF5 file format, python-h5py)
 
 
@@ -86,5 +85,5 @@ to run this code in OSX, please try [this](https://superuser.com/questions/30275
 
 ## Disclaimer
 
-Feel free to use this code in your work, but please link this page
+Feel free to use this code in your work, but please link [Ruggiero's page](https://github.com/ruggiero/clustep)
 in your paper.
