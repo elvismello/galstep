@@ -1,7 +1,7 @@
 # Run python galstep.py --help for a description.
 
 from os import path
-from sys import exit, stdout, path
+from sys import exit, stdout
 from time import sleep
 
 import numpy as np
