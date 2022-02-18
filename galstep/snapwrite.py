@@ -93,8 +93,6 @@ def write_snapshot(n_part, data_list, outfile='init.dat',
         smoothing_data = data_list[6]
     if len(data_list) > 7:
         Z = data_list[7]
-    else:
-        Z = None
 
     if file_format == 'gadget2':
         header_data = read_header(n_part)
@@ -105,10 +103,14 @@ def write_snapshot(n_part, data_list, outfile='init.dat',
             write_block(f, ID_data, 'i', 'ID  ')
             write_block(f, mass_data, 'f', 'MASS')
             if(N_gas > 0):
-               write_block(f, U_data, 'f', 'U   ')
-               write_block(f, rho_data, 'f', 'RHO ')
-               write_block(f, smoothing_data, 'f', 'HSML')
+                write_block(f, U_data, 'f', 'U   ')
+
+                if(len(data_list) > 7):
+                    write_block(f, Z, 'f', 'Z   ')
     
+                write_block(f, rho_data, 'f', 'RHO ')
+                write_block(f, smoothing_data, 'f', 'HSML')
+
     elif file_format == 'hdf5':
         import h5py
 
@@ -133,8 +135,6 @@ def write_snapshot(n_part, data_list, outfile='init.dat',
 
             #Particle families
             for i, j in enumerate(n_part):
-                # HDF5 format doesn't require info for particles that
-                # don't exist
                 if j == 0:
                     continue
                 else:
@@ -153,14 +153,16 @@ def write_snapshot(n_part, data_list, outfile='init.dat',
                     current_family.create_dataset('Masses',
                                 data = mass_data[start_index:end_index],
                                 dtype = dtype)
+
                     # TODO currently all gas+stars get the same metallicity.
                     # this should be an option in the configuration as well.
 
-                    # Metallicity properties - not needed for now
-                    #if (i in [0, 2, 3, 4]) and (Z != None):
-                    #    current_family.create_dataset('Metallicity',
-                    #                data = Z[start_index:end_index],
-                    #                dtype = dtype)
+                    # Metallicity properties
+                    # Added if data list has an extra list at the end
+                    if (i in [0, 2, 3, 4]) and np.any(Z):
+                        current_family.create_dataset('Metallicity',
+                                    data = Z[start_index:end_index],
+                                    dtype = dtype)
 
                     #Gas specific properties
                     if i == 0 and N_gas > 0:

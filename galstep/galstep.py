@@ -147,23 +147,26 @@ def generate_galaxy():
     vels = set_velocities(coords, None)
   coords = np.array(coords, order='C')
   # Don't need this for HDF5 - D. Rennehan
-  if file_format == 'gadget2':
-    coords.shape = (1, -1) # Linearizing the array.
+  
+  coords.shape = (1, -1) # Linearizing the array.
   vels = np.array(vels, order='C')
-  if file_format == 'gadget2':
-    vels.shape = (1, -1)
+  vels.shape = (1, -1)
 
   # Again, don't need this if doing HDF5 - D. Rennehan
-  if file_format == 'hdf5':
-    if gas:
-      return [coords, vels, U, rho]
-    else:
-      return [coords, vels]
+
+  # All the heavy lifting is done in snapwrite, where the lists are
+  # formated in order to fit the chosen file type -E. Mello
+  
+  #if file_format == 'hdf5':
+  #  if gas:
+  #    return [coords, vels, U, rho]
+  #  else:
+  #    return [coords, vels]
+  #else:
+  if(gas):
+    return [coords[0], vels[0], U, rho]
   else:
-    if(gas):
-      return [coords[0], vels[0], U, rho]
-    else:
-      return [coords[0], vels[0]]
+    return [coords[0], vels[0]]
 
 
 def dehnen_cumulative(r, M, a, gamma):
@@ -507,11 +510,11 @@ def write_input_file(galaxy_data):
       Zs.fill(Z)
       write_snapshot([N_gas, N_halo, N_disk, N_bulge, 0, 0],
         data_list=[coords, vels, ids, masses, U, rho, smooths, Zs],
-        outfile=output)
+        outfile=output, file_format=file_format)
     else:
       write_snapshot([N_gas, N_halo, N_disk, N_bulge, 0, 0],
         data_list=[coords, vels, ids, masses, U, rho, smooths],
-        outfile=output)
+        outfile=output, file_format=file_format)
   else:
     if(bulge):
       masses = np.concatenate((m_halo, m_disk, m_bulge))
