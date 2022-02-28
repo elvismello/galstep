@@ -1,5 +1,6 @@
 import struct
 import numpy as np
+import h5py
 
 def read_header(n_part):
     h_data = []
@@ -112,7 +113,6 @@ def write_snapshot(n_part, data_list, outfile='init.dat',
                 write_block(f, smoothing_data, 'f', 'HSML')
 
     elif file_format == 'hdf5':
-        import h5py
 
         pos_data.shape = (len(pos_data)//3, 3)
         vel_data.shape = (len(vel_data)//3, 3)
@@ -135,10 +135,10 @@ def write_snapshot(n_part, data_list, outfile='init.dat',
 
             #Particle families
             for i, j in enumerate(n_part):
-                if j == 0:
+                if j == 0: # only writes a dataset if the element from n_part != 0
                     continue
                 else:
-                    current_family = f.create_group('PartType'+str(i))
+                    current_family = f.create_group(f'PartType{i}')
                     start_index = sum(n_part[:i])
                     end_index = sum(n_part[:i+1])
                     current_family.create_dataset('Coordinates',
@@ -159,7 +159,10 @@ def write_snapshot(n_part, data_list, outfile='init.dat',
 
                     # Metallicity properties
                     # Added if data list has an extra list at the end
-                    if (i in [0, 2, 3, 4]) and np.any(Z):
+                    if i in [0, 2, 3, 4] and np.any(Z):
+                        if i > 1: # removes halo particles' indices
+                            start_index -= n_part[1]
+                            end_index -= n_part[1]
                         current_family.create_dataset('Metallicity',
                                     data = Z[start_index:end_index],
                                     dtype = dtype)
