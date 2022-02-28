@@ -94,6 +94,8 @@ def write_snapshot(n_part, data_list, outfile='init.dat',
         smoothing_data = data_list[6]
     if len(data_list) > 7:
         Z = data_list[7]
+    else:
+        Z = False
 
     if file_format == 'gadget2':
         header_data = read_header(n_part)
