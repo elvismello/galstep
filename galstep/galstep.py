@@ -506,7 +506,11 @@ def write_input_file(galaxy_data):
       masses = np.concatenate((m_gas, m_halo, m_disk))
     smooths = np.zeros(N_gas)
     if Z > 0:
-      Zs = np.zeros(N_gas + N_disk + N_bulge)
+      # TODO create a flag to choose Zs behaviour
+      # i.e. either setting Z for all non dark-matter particles or
+      # setting Z only to gas particles
+      #Zs = np.zeros(N_gas + N_disk + N_bulge)
+      Zs = np.zeros(N_gas)
       Zs.fill(Z)
       write_snapshot([N_gas, N_halo, N_disk, N_bulge, 0, 0],
         data_list=[coords, vels, ids, masses, U, rho, smooths, Zs],
