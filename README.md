@@ -50,8 +50,8 @@ of the box in RAMSES with the DICE patch.
 
 ## Usage
 
-You can run `python galstep.py --help` to see the message below. Also please
-check out the `galaxy_params.ini` file to see the available free parameters.
+You can run `python galstep.py --help` to see the message below. Also
+check the `galaxy_params.ini` file to see other available parameters.
 
     usage: galstep.py [-h] [-cores CORES] [--force-yes] [--force-no] [--hdf5]
                       [-o init.dat] [-i params_galaxy.ini]
@@ -86,4 +86,4 @@ to run this code in OSX, please try [this](https://superuser.com/questions/30275
 ## Disclaimer
 
 Feel free to use this code in your work, but please link this page and
-[Ruggiero's original code](https://github.com/ruggiero/clustep) in your paper.
+[Ruggiero's original code](https://github.com/ruggiero/galstep) in your paper.
