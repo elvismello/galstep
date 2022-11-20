@@ -526,7 +526,7 @@ def write_input_file(galaxy_data):
       masses = np.concatenate((m_halo, m_disk))
     write_snapshot([0, N_halo, N_disk, N_bulge, 0, 0],
       data_list=[coords, vels, ids, masses],
-      outfile=output)
+      outfile=output, file_format=file_format)
 
 
 if __name__ == '__main__':
