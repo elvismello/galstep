@@ -16,6 +16,7 @@ from argparse import ArgumentParser as parser
 import configparser
 from itertools import product
 import scipy.interpolate as inter
+from functools import partial
 
 from treecode import oct_tree, potential
 from snapwrite import write_snapshot
@@ -218,17 +219,25 @@ def disk_density(rho, z, M, z0):
 
 def set_halo_positions():
     global halo_cut_M
-    radii = np.zeros(N_halo)
     halo_cut_M = dehnen_cumulative(halo_cut_r, M_halo, a_halo, gamma_halo)
     print( f"\t{(100*(1-halo_cut_M/M_halo)):2.0f}% of halo mass cut by the truncation...")
     if halo_cut_M < 0.9*M_halo:
         print( "\t\t Warning: this is more than 10% of the total halo mass!")
 
-    sample = nprand.sample(N_halo) * halo_cut_M    
-    args_list = [(Mc, M_halo, a_halo, gamma_halo) for Mc in sample]
+    sample = nprand.sample(N_halo) * halo_cut_M
+    func = partial(dehnen_inverse_cumulative_single, M=M_halo, a=a_halo,
+                   gamma=gamma_halo)
     with Pool(N_CORES) as pool:
-        radii = pool.starmap(dehnen_inverse_cumulative_single, args_list)
-
+        results_iter = pool.imap(func, sample, chunksize=N_CORES*100)
+        radii = []
+        count = 0
+        for res in results_iter:
+            radii.append(res)
+            count += 1
+            if count % max(1, N_halo // 10) == 0 or count == N_halo:
+                print(f"\t\tProgress: {100 * count / N_halo:0.0f}%\r", end="",
+                      flush=True)
+    print("")
 
     thetas = np.arccos(nprand.sample(N_halo) * 2 - 1)
     phis = 2 * pi * nprand.sample(N_halo)
@@ -247,11 +256,20 @@ def set_bulge_positions():
     if bulge_cut_M < 0.9*M_bulge:
         print ("\t Warning: this is more than 10% of the total bulge mass!")
     
-
     sample = nprand.sample(N_bulge) * bulge_cut_M
-    args_list = [(Mc, M_bulge, a_bulge, gamma_bulge) for Mc in sample]
+    func = partial(dehnen_inverse_cumulative_single, M=M_bulge, a=a_bulge,
+                   gamma=gamma_bulge)
     with Pool(N_CORES) as pool:
-        radii = pool.starmap(dehnen_inverse_cumulative_single, args_list)
+        results_iter = pool.imap(func, sample, chunksize=N_CORES*100)
+        radii = []
+        count = 0
+        for res in results_iter:
+            radii.append(res)
+            count += 1
+            if count % max(1, N_halo // 10) == 0 or count == N_bulge:
+                print(f"\t\tProgress: {100 * count / N_bulge:0.0f}%\r", end="",
+                      flush=True)
+    print("")
 
     thetas = np.arccos(nprand.sample(N_bulge)*2 - 1)
     phis = 2 * pi * nprand.sample(N_bulge)
@@ -273,7 +291,17 @@ def set_disk_positions(N, z0):
     
     sample = nprand.sample(N) * disk_cut
     with Pool(N_CORES) as pool:
-        radii = pool.map(disk_radial_inverse_cumulative, sample)
+        results_iter = pool.imap(disk_radial_inverse_cumulative, sample,
+                                 chunksize=N_CORES*100)
+        radii = []
+        count = 0
+        for res in results_iter:
+            radii.append(res)
+            count += 1
+            if count % max(1, N_halo // 10) == 0 or count == N:
+                print(f"\t\tProgress: {100 * count / N:0.0f}%\r", end="",
+                      flush=True)
+    print("")
 
     zs = disk_height_inverse_cumulative(nprand.sample(N), z0)
     phis = 2 * pi * nprand.sample(N)
