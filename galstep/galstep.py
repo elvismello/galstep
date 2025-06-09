@@ -281,13 +281,15 @@ def fill_potential_grid(coords_stars, coords_gas=None):
     gravtree = oct_tree(200*a_halo*2)
     for i, part in enumerate(coords_stars):
         prog = 100*float(i)/len(coords_stars)
-        print(f"{prog:.2f} done for the stellar disk\r", end="", flush=True)
+        if prog % 5 == 0:
+            print(f"{prog:.0f}% done for the stellar disk\r", end="", flush=True)
         gravtree.insert(part, M_disk/N_disk)
     print("") # jumping to next line
     if(coords_gas is not None):
         for i, part in enumerate(coords_gas):
             prog = 100*float(i)/len(coords_gas)
-            print(f"{prog:.2f} done for the gaseous disk\r", end="", flush=True)
+            if prog % 5 == 0:
+                print(f"{prog:.0f}% done for the gaseous disk\r", end="", flush=True)
             gravtree.insert(part, M_gas/N_gas)
  
     print ("\nFilling potential grid...")
@@ -313,9 +315,9 @@ def fill_potential_grid(coords_stars, coords_gas=None):
         while np.all([p.is_alive() for p in proc]):
             for i in range(N_CORES):
                 if i == N_CORES - 1:
-                    print(f"core {N_CORES:d}: {prog[N_CORES-1]:1.1f}% ", end="\r")
+                    print(f"core {N_CORES:d}: {prog[N_CORES-1]:1.1f}%", end="\r")
                 else:
-                    print(f"core {i+1:d}: {prog[i]:1.1f}% ", end="", flush=True)
+                    print(f"core {i+1:2d}: {prog[i]:2.0f}% | ", end="", flush=True)
             sleep(1)
         print("") # jumping to next line
         [p.join() for p in proc]
