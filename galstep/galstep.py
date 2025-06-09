@@ -224,10 +224,8 @@ def set_halo_positions():
     if halo_cut_M < 0.9*M_halo:
         print( "\t\t Warning: this is more than 10% of the total halo mass!")
 
-    sample = nprand.sample(N_halo) * halo_cut_M
-    
+    sample = nprand.sample(N_halo) * halo_cut_M    
     args_list = [(Mc, M_halo, a_halo, gamma_halo) for Mc in sample]
-
     with Pool(N_CORES) as pool:
         radii = pool.starmap(dehnen_inverse_cumulative_single, args_list)
 
@@ -251,9 +249,7 @@ def set_bulge_positions():
     
 
     sample = nprand.sample(N_bulge) * bulge_cut_M
-
     args_list = [(Mc, M_bulge, a_bulge, gamma_bulge) for Mc in sample]
-
     with Pool(N_CORES) as pool:
         radii = pool.starmap(dehnen_inverse_cumulative_single, args_list)
 
@@ -274,11 +270,10 @@ def set_disk_positions(N, z0):
     print(f"\t{(100*(1-disk_cut)):2.0f}% of disk mass cut by the truncation...")
     if disk_cut < 0.9:
         print("\t Warning: this is more than 10% of the total disk mass!")
+    
     sample = nprand.sample(N) * disk_cut
-
     with Pool(N_CORES) as pool:
         radii = pool.map(disk_radial_inverse_cumulative, sample)
-
 
     zs = disk_height_inverse_cumulative(nprand.sample(N), z0)
     phis = 2 * pi * nprand.sample(N)
