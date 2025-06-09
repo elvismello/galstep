@@ -11,6 +11,7 @@ from scipy.optimize import brentq
 from scipy import integrate
 from bisect import bisect_left
 from multiprocessing import Process, Array
+from multiprocessing import Pool
 from argparse import ArgumentParser as parser
 import configparser
 from itertools import product
@@ -115,11 +116,15 @@ def init():
 def generate_galaxy():
     global phi_grid
     print("Setting positions...")
+    print("\tHalo positions...")
     coords_halo = set_halo_positions()
+    print("\tDisk positions...")
     coords_stars = set_disk_positions(N_disk, z0)
     if(bulge):
+        print("\tBulge positions...")
         coords_bulge = set_bulge_positions()
     if(gas):
+        print("\tGas positions...")
         coords_gas = set_disk_positions(N_gas, z0_gas)
         if(bulge):
             coords = np.concatenate((coords_gas, coords_halo, coords_stars,
@@ -173,12 +178,26 @@ def dehnen_cumulative(r, M, a, gamma):
     return M * (r/(r+float(a)))**(3-gamma)
 
 
-# Inverse cumulative mass function. Mc is a number between 0 and M.
 def dehnen_inverse_cumulative(Mc, M, a, gamma):
+    """
+    Inverse cumulative mass function. Mc is a number between 0 and M.
+
+    Assumes Mc is an interable.
+    """
+    
     results = []
     for i in Mc:
         results.append(brentq(lambda r: dehnen_cumulative(r, M, a, gamma) - i, 0, 1.0e10))
     return np.array(results)
+
+
+def dehnen_inverse_cumulative_single(Mc, M, a, gamma):
+    """
+    Inverse cumulative mass function. Mc is a number between 0 and M.
+
+    Easier to parallelize
+    """
+    return brentq(lambda r: dehnen_cumulative(r, M, a, gamma) - Mc, 0, 1.0e10)
 
 
 def dehnen_potential(r, M, a, gamma):
@@ -199,13 +218,21 @@ def disk_density(rho, z, M, z0):
 
 def set_halo_positions():
     global halo_cut_M
+    radii = np.zeros(N_halo)
     halo_cut_M = dehnen_cumulative(halo_cut_r, M_halo, a_halo, gamma_halo)
-    print( f"{(100*(1-halo_cut_M/M_halo)):.0f}% of halo mass cut by the truncation...")
+    print( f"\t{(100*(1-halo_cut_M/M_halo)):2.0f}% of halo mass cut by the truncation...")
     if halo_cut_M < 0.9*M_halo:
-        print( "    \t Warning: this is more than 10% of the total halo mass!")
-    radii = dehnen_inverse_cumulative(nprand.sample(N_halo) * halo_cut_M,
-        M_halo, a_halo, gamma_halo)
-    thetas = np.arccos(nprand.sample(N_halo)*2 - 1)
+        print( "\t\t Warning: this is more than 10% of the total halo mass!")
+
+    sample = nprand.sample(N_halo) * halo_cut_M
+    
+    args_list = [(Mc, M_halo, a_halo, gamma_halo) for Mc in sample]
+
+    with Pool(N_CORES) as pool:
+        radii = pool.starmap(dehnen_inverse_cumulative_single, args_list)
+
+
+    thetas = np.arccos(nprand.sample(N_halo) * 2 - 1)
     phis = 2 * pi * nprand.sample(N_halo)
     xs = radii * sin(thetas) * cos(phis)
     ys = radii * sin(thetas) * sin(phis)
@@ -216,12 +243,20 @@ def set_halo_positions():
 
 def set_bulge_positions():
     global bulge_cut_M
+    #radii = np.zeros(N_bulge)
     bulge_cut_M = dehnen_cumulative(bulge_cut_r, M_bulge, a_bulge, gamma_bulge)
-    print( f"{(100*(1-bulge_cut_M/M_bulge)):.0f}%% of bulge mass cut by the truncation...")
+    print( f"\t{(100*(1-bulge_cut_M/M_bulge)):2.0f}% of bulge mass cut by the truncation...")
     if bulge_cut_M < 0.9*M_bulge:
-        print ("    \t Warning: this is more than 10% of the total bulge mass!")
-    radii = dehnen_inverse_cumulative(nprand.sample(N_bulge) * bulge_cut_M,
-        M_bulge, a_bulge, gamma_bulge)
+        print ("\t Warning: this is more than 10% of the total bulge mass!")
+    
+
+    sample = nprand.sample(N_bulge) * bulge_cut_M
+
+    args_list = [(Mc, M_bulge, a_bulge, gamma_bulge) for Mc in sample]
+
+    with Pool(N_CORES) as pool:
+        radii = pool.starmap(dehnen_inverse_cumulative_single, args_list)
+
     thetas = np.arccos(nprand.sample(N_bulge)*2 - 1)
     phis = 2 * pi * nprand.sample(N_bulge)
     xs = radii * sin(thetas) * cos(phis)
@@ -233,15 +268,18 @@ def set_bulge_positions():
 
 def set_disk_positions(N, z0):
     global disk_cut
-    radii = np.zeros(N)
+    #radii = np.zeros(N)
+    #shared_radii = Array("d", N)
     disk_cut = disk_radial_cumulative(disk_cut_r)
-    print( "%.0f%% of disk mass cut by the truncation..." % \
-                (100*(1-disk_cut)))
+    print(f"\t{(100*(1-disk_cut)):2.0f}% of disk mass cut by the truncation...")
     if disk_cut < 0.9:
-        print( "    \t Warning: this is more than 10% of the total disk mass!")
+        print("\t Warning: this is more than 10% of the total disk mass!")
     sample = nprand.sample(N) * disk_cut
-    for i, s in enumerate(sample):
-        radii[i] = disk_radial_inverse_cumulative(s)
+
+    with Pool(N_CORES) as pool:
+        radii = pool.map(disk_radial_inverse_cumulative, sample)
+
+
     zs = disk_height_inverse_cumulative(nprand.sample(N), z0)
     phis = 2 * pi * nprand.sample(N)
     xs = radii * cos(phis)
@@ -277,20 +315,22 @@ def fill_potential_grid(coords_stars, coords_gas=None):
     # performance. The tree takes longer to calculate the potential
     # at small radii. ip stands for 'index pair'.
     ip = nprand.permutation(list(product(range(N_rho), range(Nz))))
-    print("Building gravity tree...")
+    print("Building gravity tree...", flush=True)
     gravtree = oct_tree(200*a_halo*2)
     for i, part in enumerate(coords_stars):
+        mass = M_disk / N_disk
         prog = 100*float(i)/len(coords_stars)
-        if prog % 5 == 0:
-            print(f"{prog:.0f}% done for the stellar disk\r", end="", flush=True)
-        gravtree.insert(part, M_disk/N_disk)
+        if prog % 1 == 0:
+            print(f"\t{prog:.0f}% done for the stellar disk\r", end="", flush=True)
+        gravtree.insert(part, mass)
     print("") # jumping to next line
     if(coords_gas is not None):
+        mass =  M_gas / N_gas
         for i, part in enumerate(coords_gas):
             prog = 100*float(i)/len(coords_gas)
-            if prog % 5 == 0:
-                print(f"{prog:.0f}% done for the gaseous disk\r", end="", flush=True)
-            gravtree.insert(part, M_gas/N_gas)
+            if prog % 1 == 0:
+                print(f"\t{prog:.0f}% done for the gaseous disk\r", end="", flush=True)
+            gravtree.insert(part, mass)
  
     print ("\nFilling potential grid...")
     def loop(n_loop, N_CORES):
@@ -313,11 +353,13 @@ def fill_potential_grid(coords_stars, coords_gas=None):
     try:
         [p.start() for p in proc]
         while np.all([p.is_alive() for p in proc]):
-            for i in range(N_CORES):
-                if i == N_CORES - 1:
-                    print(f"core {N_CORES:d}: {prog[N_CORES-1]:1.1f}%", end="\r")
-                else:
-                    print(f"core {i+1:2d}: {prog[i]:2.0f}% | ", end="", flush=True)
+            print(f"\t\tProgress:  {np.mean(prog):2.0f}%\r", flush=True,
+                  end="")            
+            #for i in range(N_CORES):
+            #    if i == N_CORES - 1:
+            #        print(f"c {N_CORES:d}: {prog[N_CORES-1]:1.1f}%", end="\r")
+            #    else:
+            #        print(f"c {i+1:2d}: {prog[i]:2.0f}% | ", end="", flush=True)
             sleep(1)
         print("") # jumping to next line
         [p.join() for p in proc]
@@ -412,10 +454,10 @@ def set_velocities(coords, T_cl_grid):
     # Avoiding numerical problems. They only occur at a minor amount
     # of points, anyway. I set the values to a small number so I can
     # successfuly sample from the gaussian distributions ahead.
-    sphi_grid[np.isnan(sphi_grid)] = 1.0e-5;
-    sphi_grid[sphi_grid == np.inf] = 1.0e-5;
-    sphi_grid[sphi_grid <= 0] = 1.0e-5;
-    sz_grid[sz_grid == 0] = 1.0e-5;
+    sphi_grid[np.isnan(sphi_grid)] = 1.0e-5
+    sphi_grid[sphi_grid == np.inf] = 1.0e-5
+    sphi_grid[sphi_grid <= 0] = 1.0e-5
+    sz_grid[sz_grid == 0] = 1.0e-5
     # aux_grid[np.isnan(aux_grid)] = 1.0e-5;
     # aux_grid[aux_grid == np.inf] = 1.0e-5;
     # aux_grid[aux_grid <= sphi_grid[1][0]] = (sphi_grid[1][aux_grid <= sphi_grid[1][0]] + 1.0e-5)
