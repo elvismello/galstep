@@ -473,6 +473,8 @@ def generate_sigma_grids():
 
 
 def set_velocities(coords, T_cl_grid):
+    # TODO this function may be a bottleneck now that most heavy loops are
+    # parallelized
     sz_grid, sphi_grid = generate_sigma_grids()
     # Avoiding numerical problems. They only occur at a minor amount
     # of points, anyway. I set the values to a small number so I can

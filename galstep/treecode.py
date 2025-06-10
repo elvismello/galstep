@@ -16,6 +16,7 @@ offsets = np.array([
 ], dtype=np.float64)
 
 class oct_tree():
+    # this should improve efficiency
     __slots__ = ('COM', 'mass', 'center', 'side', 'branches', 'childless')
 
     def __init__(self, side, center=np.zeros(3), COM=np.zeros(3), mass=0.0):
@@ -48,6 +49,8 @@ class oct_tree():
 
         for p, m in insertion_list:
             node = self
+            # TODO add max_iter
+            # measure some reasonable number of iterations
             while True:
                 index = node.find_place(p)
 
