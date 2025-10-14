@@ -361,7 +361,7 @@ def generate_sigma_grids():
         ys[2][i][j] = dehnen_density(r, M_bulge, a_bulge, gamma_bulge) * dphi/dz 
     for j in range(0, Nz-1):
       r = (rho_axis[i]**2 + z_axis[j]**2)**0.5
-      sz_grid[0][i][j] = 1/dehnen_density(r, M_halo, a_halo, gamma_halo) * integrate.simps(ys[0][i][j:], z_axis[j:])
+      sz_grid[0][i][j] = 1/dehnen_density(r, M_halo, a_halo, gamma_halo) * integrate.simps(ys[0][i][j:], x=z_axis[j:])
       sz_grid[1][i][j] = (1/disk_density(rho_axis[i], z_axis[j], M_disk, z0) * 
         integrate.simps(ys[1][i][j:], z_axis[j:]))
       if(bulge):
